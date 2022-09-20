@@ -267,3 +267,4 @@ ggplot(day_table, aes(x= fct_inorder(rownames(day_table)), y= member))+ geom_bar
 ggplot(day_table, aes(x= fct_inorder(rownames(day_table)), y= casual))+ geom_bar(stat = "identity", fill = 'salmon')+ xlab("Day of the Week")+ ylab("Casual Count")
 ```
 
+Full presentation with the graphs created through R studio https://docs.google.com/presentation/d/10wIZdV_Ru8o0mmxsdZur8mAjAcMSi6DRWzk1gqmg49I/edit?usp=sharing
