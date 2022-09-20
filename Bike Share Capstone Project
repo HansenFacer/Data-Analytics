@@ -1,0 +1,269 @@
+## All Data for this project was supplied by Motivate International Inc.
+
+The data being used for this project is the most recent 12 months of released data from August 2021 to July 2022 at this time. The data includes the following columns
+
+* Ride_id
+* Rideable_type
+* started_at
+* ended_at
+* start_station_name
+* start_station_id
+* end_station_name
+* end_station_id
+* start_lat
+* start_lang
+* end_lat
+* end_lang
+* member_casual
+
+## Business Problem
+
+The main problem that the fictional company Cyclistic wants to solve is how to convert more of their Casual users into Members because the profit is much higher from Members than Casual users. There are three questions that are given to guide our project and recommendations.
+
+  *How do annual members and casual riders use Cyclistic bikes differently?
+  
+  *Why would casual riders buy Cyclistic annual memberships?
+  
+  *How can Cyclistic use digital media to influence casual riders to become members?
+
+## Uploading the data
+
+The first thing I did was download the CSV files from the hosted site where they are made available at
+
+https://divvy-tripdata.s3.amazonaws.com/index.html
+
+The files downloaded were the trip.data files posted on September 8th 2021-August 5th 2022. I saved all of the files into a folder on my desktop.
+
+Then when starting under session I set the working directory to the folder that contained all of the CSV files that I had downloaded.
+
+I then created a new file in the environment for each CSV file using the following code.
+
+  August21_df <- read.csv("202108-divvy-tripdata.csv")
+  
+Making the names easier to work with in the future without having to type out the whole file name.
+
+## Cleaning the data
+
+The first thing that I did to make working with the data easier was to remove rows that had incomplete or missing data. So that I only used entries that were complete using this code chunk for each month.
+
+  August21_df <- na.omit(August21_df)
+
+I used the following code chunk to remove any duplicate entries to the data using this code chunk for each month.
+
+  August21_df <- unique(August21_df)
+
+Because the main goal of the project was how to get more of the Casual riders to become Members I decided to remove the following columns to make working with the data set easier.
+
+  * start_station_name
+  * start_station_id
+  * end_station_name
+  * end_station_id
+  * start_lat
+  * start_lang
+  * end_lat
+  * end_lang
+
+These columns contained data that I felt were more suited to questions of operations and not the main question of how to convert more Casual users into Members. I used this code to remove unwanted columns.
+
+```{r}
+August21_df <- subset(August21_df, select = -c(start_station_id, start_station_name, end_station_id, end_station_name, start_lat, start_lng, end_lat, end_lng))
+```
+  
+Lastly to be able to get a really accurate count I remove entries that were less then a minute. I did this because any trip that was less then a minute were probably mistakes where a person thought about using a bike but then put it back. I wanted to use data of when people actually used the bike.To do this I used two chunks of code, one to create a new column that showed trip length,
+
+```{r}
+August21_df$trip_length <- difftime(August21_df$ended_at, August21_df$started_at, units = c("mins"))
+```
+  
+The second chunk of code was to remove any trips that were less than a one minute in length
+
+```{r}
+August21_df <- August21_df[!(August21_df$trip_length <1),]
+```
+  
+Now my data was clear of columns that I didn't want to use, rows that had missing data, trips that were less than one minute, and any duplicate trips there may have been.
+
+## Analyzing the data
+
+Since the goal is to find out Casual user's use differs from Member use and to convert Casual users into Members I decided to first see how many Casual users there were compared to Members for each month. To do this I used the following code chunk;
+
+```{r}
+table(August21_df$member_casual)
+```
+
+I did this for each month to get the total riders of each type. Then taking that data I made three values so that I could create a new data frame to work with using the following code chunks:
+
+```{r}
+Month_Year <- c("August21", "September21", "October21", "November21", "December21", "January22", "February22", "March22", "April22", "May22", "June22", "July22")
+```
+
+```{r}
+ Members <- c("385426", "385788", "367392", "248699", "174878", "83736", "92048", "190573", "239832", "347247", "391798", "407946")
+```
+
+```{r}
+ Casual <- c("407517", "358806", "253415", "105373", "68752", "18097", "20926", "88105", "123784", "274475", "360967", "396782")
+```
+
+Then with those three values created I merged them into a data frame using this code chunk:
+
+```{r}
+Member_Casual_rides_by_month <- data.frame(Month_Year, Members, Casual)
+```
+
+Then created a pivot table that had seperate rows for Members and Casuals for each month to make using the data in charts easier using this code chunk;
+
+```{r}
+Member_Casual_Pivot <- pivot_longer(Member_Casual_rides_by_month, cols = c(Members, Casual), names_to = "user_type", values_to = "Count")
+```
+
+
+Then with that data I made a stacked bar graph showing the total amount of user per month and how many of them were Members and how many were casuals using this code,
+
+```{r}
+ggplot(Member_Casual_Pivot, aes(x= factor(Month_Year, level= c(unique(Member_Casual_Pivot$Month_Year))),  y= Count, fill = user_type)) + geom_bar(position= "stack", stat = "identity")+ xlab("Month and Year")+ theme(axis.text.x = element_text(angle = 60), text = element_text(face = "bold"))
+```
+
+  
+Then I wanted to see if there was a big difference between the types of bikes used by Members and Casuals so I used this code chunk for each data frame
+
+```{r}
+table(August21_df$rideable_type, August21_df$member_casual)
+```
+
+  To see the information for all months a loop can be used like this
+  
+```{r}
+for (Month in list(August21_df, September21_df, October21_df, November21_df, December21_df, January22_df, February22_df, March22_df, April22_df, May22_df, June22_df, July22_df)) {print(table(Month$rideable_type, Month$member_casual))}
+```
+
+One thing that can be noticed very easily is that there are no instances of Members using a docked bike. This leads me to believe that docked bikes are only tracked for Casual users and when a Member uses a docked bike it is included in the classic bike count. I think this is because electric bikes will always need to be docked to charge and classic bikes do not, but when a casual user started a ride from a bike that is currently docked it is counted as a docked bike. So for this analysis I combined the Casual docked and classic bike counts together.
+
+So to see if there is a difference in the type of bike preference between Members and Casual users I created another data frame by first creating the values that I needed and then combining them into a data frame like I did earlier with the number of rides;
+
+```{r}
+month_rideables <- c('August21 Member', 'August21 Casual', 'September21 Member', 'September21 Casual', 'October21 Member', 'October21 Casual', 'November21 Member', 'November21 Casual', 'December21 Member', 'December21 Casual', 'January22 Member', 'January22 Casual', 'February22 Member', 'February22 Casual', 'March22 Member', 'March22 Casual', 'April22 Member', 'April22 Casual', 'May22 Member', 'May22 Casual', 'June22 Member', 'June22 Casual', 'July22 Member', 'July22 Casual')
+```
+
+```{r}
+count_classic <- c('269076', '272440', '262914', '226277', '207508','126988', '120583', '39150', '79773', '24549', '47414', '7809', '50294', '9319', '97591', '43081', '117438', '58765', '194772', '149729', '232815', '196875', '213618', "183622")
+```
+
+```{r}
+count_electric <- c('116350', '135077', '122874', '130529', '159884', '126427', '128116', '66223', '95105', '44203', '36322', '10288', '41754', '11607', '92982', '45024', '122394', '65019', '152475', '124746', '158983', '164092', '194328', '213160')
+```
+
+```{r}
+count_total <- c('385426', '407517', '385788', '356806', '367392', '253415', '248699', '105373', '174878', '68752', '83736', '18097', '92048', '20926', '190573', '88105', '239832', '123784', '347247', '274475', '391798', '360967', '407946', '396782')
+```
+
+```{r}
+percent_electric <- c('30.1', '33.1', '31.8', '36.5', '43.5', '49.8', '51.5', '62.8', '54.3', '64.2', '43.3', '56.8', '45.3', '55.4', '48.7', '51.1', '51', '52.5', '43.9', '45.4', '40.5', '45.4', '47.6', '53.7')
+```
+
+```{r}
+rideables_by_month <- data.frame(month_rideables, count_classic, count_electric, count_total, percent_electric)
+```
+
+now using this data frame I can create more visuals to show the type of bike that each type of customer prefers
+
+First to show the total of each bike type used each month by each user type I created a bar graph with this code chunk;
+
+```{r}
+ggplot(rideables_by_month, aes(x= factor(month_rideables, levels = c(unique(rideables_by_month$month_rideables))), y= percent_electric, fill = member_status))+ geom_bar(stat = 'identity') + xlab("Electric Bike Usage") + theme(axis.text.x = element_text(angle = 90))+ scale_color_manual(values = c('member_status$Member=blue'))
+```
+
+I had a column name that was messing with my code so I used this code chunk to change the name of the column to be less problematic
+
+```{r}
+colnames(rideables_by_month)[which(names(rideables_by_month)=='Member Status')] <- "member_status"
+```
+
+This showed that for every month in the last year of data the percentage of Casual users choosing to use the electric bikes was higher especially in the colder months where membership totals were much lower.
+
+The last thing I wanted to compare between Members and Casuals was what time of day they were using the bikes most often. So to start 
+
+Then I wanted to know what time of day most of the rides were taking place for the year. So I took the data frames and split the started_at text string into a date and time column using this code chunk;
+
+```{r}
+August21_df$date <- sapply(strsplit(as.character(August21_df$started_at), " "), "[", 1)
+```
+```{r}
+August21_df$start_time <- sapply(strsplit(as.character(August21_df$started_at), " "), "[", 2)
+```
+
+Then removed the started_at and ended_at columns using this code chunk:
+
+```{r}
+August21_df$started_at <- NULL
+```
+```{r}
+August21_df$ended_at <- NULL
+```
+
+Then to assign a time of day to each ride I divided the day into 4 time periods based on the hour that the ride started. 23-04 = Night 05-10 = Morning 11-16 = Midday 17-22 = Night. Using this code I was able to create a new column of data that gave each ride a time of day:
+
+```{r}
+August21_df <- August21_df %>% mutate(time_of_day = case_when(startsWith(August21_df$start_time, "23") ~ "Night", startsWith(August21_df$start_time, "01") ~ "Night", startsWith(August21_df$start_time, "00") ~ "Night", startsWith(August21_df$start_time, "02") ~ "Night", startsWith(August21_df$start_time, "03") ~ "Night", startsWith(August21_df$start_time, "04") ~ "Night", startsWith(August21_df$start_time, "05") ~ "Morning", startsWith(August21_df$start_time, "06") ~ "Morning", startsWith(August21_df$start_time, "07") ~ "Morning", startsWith(August21_df$start_time, "08") ~ "Morning", startsWith(August21_df$start_time, "09") ~ "Morning", startsWith(August21_df$start_time, "10") ~ "Morning", startsWith(August21_df$start_time, "11") ~ "Midday", startsWith(August21_df$start_time, "12") ~ "Midday", startsWith(August21_df$start_time, "13") ~ "Midday", startsWith(August21_df$start_time, "14") ~ "Midday", startsWith(August21_df$start_time, "15") ~ "Midday", startsWith(August21_df$start_time, "16") ~ "Midday", startsWith(August21_df$start_time, "17") ~ "Evening", startsWith(August21_df$start_time, "18") ~ "Evening", startsWith(August21_df$start_time, "19") ~ "Evening", startsWith(August21_df$start_time, "20") ~ "Evening", startsWith(August21_df$start_time, "21") ~ "Evening", startsWith(August21_df$start_time, "22") ~ "Evening",))
+```
+
+I repeated this process with the other months in the data frame.
+
+When I was done with all the other months I used this code chunk to create on data frame for the entire year:
+
+```{r}
+Year_totals <- rbind(August21_df, September21_df, November21_df, December21_df, January22_df, February22_df, March22_df, April22_df, May22_df, June22_df, July)
+```
+
+Then to assign a season to each month I used the follwing code chunk to make a new column and assign a season to each entry:
+
+```{r}
+Year_totals <- Year_totals %>% mutate(time_of_year = case_when(substr(date, start = 6, stop = 7) == "12" ~ "Winter", substr(date, start = 6, stop = 7) == "01" ~ "Winter", substr(date, start = 6, stop = 7) == "02" ~ "Winter", substr(date, start = 6, stop = 7) == "03" ~ "Spring", substr(date, start = 6, stop = 7) == "04" ~ "Spring", substr(date, start = 6, stop = 7) == "05" ~ "Spring", substr(date, start = 6, stop = 7) == "06" ~ "Summer", substr(date, start = 6, stop = 7) == "07" ~ "Summer", substr(date, start = 6, stop = 7) == "08" ~ "Summer", substr(date, start = 6, stop = 7) == "09" ~ "Fall", substr(date, start = 6, stop = 7) == "10" ~ "Fall", substr(date, start = 6, stop = 7) == "11" ~ "Fall"))
+```
+
+Then to plot how many rides happened at each time of day based on season I first created a pivot table with just that information using this code chunk:
+
+```{r}
+Year_totals_Pivot <- aggregate(Year_totals$ride_id, list(Year_totals$time_of_year, Year_totals$time_of_day), length)
+```
+
+After creating the pivot table I created the graph using this code chunk:
+
+```{r}
+ggplot(Year_totals_pivot, aes(factor(x= Group.1, levels= c("Winter", "Spring", "Summer", "Fall")), y= x, fill = Group.2))+ geom_bar(position = "stack", stat = "identity")+ xlab("Time of Ride by Season")+ ylab('count')
+``` 
+
+The last thing I wanted to do was to see if there was any differences in what day of the week Members and Casuals used the ride service on. So using the Year_totals data I used the following code chunk to pull the information I wanted; Then I created a new column in the dataframe that showed the day the ride occurred on;
+
+```{r}
+date_info <- format(as.Date(Year_totals$date), "%A")
+```
+
+Then I created a new column in the dataframe that showed the day the ride occurred on;
+
+```{r}
+Year_totals$day <- date_info
+```
+
+To make the data easier to easier to work with and faster to process I took just the day and Member and Casual counts and made a value;
+
+```{r}
+Day_table <- table(Year_totals$day, Year_totals$member_casual)
+```
+
+Then turned that value into a dataframe;
+
+```{r}
+day_table <- as.data.frame.matrix(Day_table)
+```
+
+Now that I had a dataframe with only the information I wanted to use I made two graphs one showing the amount of rides for each week day by Members and Casuals. I used the following code chunks for those graphs;
+
+```{r}
+ggplot(day_table, aes(x= fct_inorder(rownames(day_table)), y= member))+ geom_bar(stat = "identity", fill = 'cyan')+ xlab("Day of the Week")+ ylab("Member Count")
+```
+
+```{r}
+ggplot(day_table, aes(x= fct_inorder(rownames(day_table)), y= casual))+ geom_bar(stat = "identity", fill = 'salmon')+ xlab("Day of the Week")+ ylab("Casual Count")
+```
+
